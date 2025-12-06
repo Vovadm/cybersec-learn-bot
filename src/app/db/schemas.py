@@ -1,16 +1,16 @@
 from pydantic import BaseModel
 
 
-class UserSchema(BaseModel):
+class UserOut(BaseModel):
     telegram_id: str
     username: str | None = None
-    experience: int = 0
+    experience: int
 
     class Config:
         orm_mode = True
 
 
-class LessonSchema(BaseModel):
+class LessonOut(BaseModel):
     id: int
     name: str
     data: str

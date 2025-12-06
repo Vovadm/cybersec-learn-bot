@@ -15,11 +15,9 @@ async def init_db():
 
 
 async def main():
-    # Сначала создаём таблицы
     await init_db()
     await load_lessons_from_json("src/data/lessons.json")
 
-    # Потом запускаем бота
     bot = Bot(token=settings.token)
     dp = Dispatcher()
     dp.include_router(router)

@@ -28,6 +28,9 @@ async def choose_theory(message: Message, state: FSMContext):
 
 @router.message(F.text == "Смотреть достижения")
 async def view_achievements(message: Message):
+    if message.from_user is None:
+        return
+
     telegram_id = str(message.from_user.id)
 
     async with async_session() as session:
