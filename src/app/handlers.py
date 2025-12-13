@@ -1,9 +1,8 @@
-from collections.abc import Sequence
-from typing import List, cast
 from aiogram import F, Bot, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, PollAnswer, InputPollOption, InputPollOptionUnion
 from sqlalchemy.future import select
+from typing import List, Sequence, Set
 
 from app.keyboards import lessons_keyboard, start_keyboard
 from app.lessons import get_lesson
@@ -67,7 +66,6 @@ async def lesson_selected(message: Message, state: FSMContext):
         return
 
     lesson = get_lesson(message.text)
-
     if lesson is None:
         await message.answer("Такого урока нет. Выберите из списка.")
         return
@@ -86,21 +84,28 @@ async def lesson_selected(message: Message, state: FSMContext):
 
         for task in tasks:
             options = task.get_options_list()
-            correct_index = int(task.correct_option or 0)
-            poll_options: List[InputPollOptionUnion] = [
-                InputPollOption(text=option) for option in options
-            ]
+            options_seq: Sequence[str] = list(options)
+
+            correct_indices = task.get_correct_options()
+
+            is_quiz = len(correct_indices) == 1
+            correct_option_id = int(correct_indices[0]) if is_quiz else None
+
+            poll_kwargs = {
+                "chat_id": message.chat.id,
+                "question": task.name or "Вопрос",
+                "options": list(options_seq),
+                "is_anonymous": False,
+                "type": "quiz" if is_quiz else "regular",
+                "allows_multiple_answers": not is_quiz,
+            }
+            if is_quiz:
+                poll_kwargs["correct_option_id"] = correct_option_id
+
             if message.bot is None:
                 return
-            sent = await message.bot.send_poll(
-                chat_id=message.chat.id,
-                question=task.name or "Вопрос",
-                options=poll_options,
-                is_anonymous=False,
-                type="quiz",
-                correct_option_id=correct_index,
-            )
 
+            sent = await message.bot.send_poll(**poll_kwargs)
             if sent.poll:
                 register_poll(sent.poll.id, task.id)
 
@@ -109,31 +114,32 @@ async def lesson_selected(message: Message, state: FSMContext):
 async def handle_poll_answer(poll_answer: PollAnswer, bot: Bot):
     poll_id = poll_answer.poll_id
     user = poll_answer.user
-    option_ids = poll_answer.option_ids
+    chosen_ids = poll_answer.option_ids
 
     task_id = POLL_TASK_MAP.get(poll_id)
     if task_id is None:
         return
 
-    chosen = option_ids[0] if option_ids else None
-    if chosen is None:
+    if not chosen_ids:
         return
 
     async with async_session() as session:
         task = await session.get(Task, task_id)
+
     if not task:
         unregister_poll(poll_id)
         return
 
-    correct_index: int = int(cast(int, task.correct_option or 0))
-    explanation: str = str(task.explanation or "")
-    exp_amount: int = int(cast(int, task.exp or 0))
+    chosen: set[int] = set(poll_answer.option_ids or [])
+    correct: set[int] = set(task.get_correct_options())
 
-    user = poll_answer.user
+    explanation: str = task.explanation or ""
+    exp_amount: int = task.exp or 0
+
     if not user:
         return
 
-    if chosen == correct_index:
+    if chosen == correct:
         awarded = await award_task_exp_if_needed(
             telegram_id=str(user.id),
             username=user.username,
@@ -142,14 +148,18 @@ async def handle_poll_answer(poll_answer: PollAnswer, bot: Bot):
 
         if awarded:
             await bot.send_message(
-                user.id, f"✅ Правильно! +{exp_amount} XP\n\n{explanation}"
+                chat_id=user.id,
+                text=f"✅ Правильно! +{exp_amount} XP\n\n{explanation}",
             )
         else:
             await bot.send_message(
-                user.id,
-                "✅ Правильно, но вы уже получили опыт за эту задачу ранее.",
+                chat_id=user.id,
+                text=f"✅ Правильно, но опыт за это задание уже был получен.\n\n{explanation}",
             )
     else:
-        await bot.send_message(user.id, f"❌ Неверно.\n\n{explanation}")
+        await bot.send_message(
+            chat_id=user.id,
+            text=f"❌ Неверно.\n\n{explanation}",
+        )
 
     unregister_poll(poll_id)

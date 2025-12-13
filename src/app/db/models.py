@@ -49,7 +49,7 @@ class Task(Base):
     lesson_id: Mapped[int] = mapped_column(Integer, ForeignKey("lessons.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     options: Mapped[str] = mapped_column(Text, nullable=False)
-    correct_option: Mapped[int] = mapped_column(Integer, nullable=False)
+    correct_options: Mapped[str] = mapped_column(Text, nullable=False)
     exp: Mapped[int] = mapped_column(Integer, default=0)
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -61,6 +61,17 @@ class Task(Base):
             return json.loads(self.options)
         except Exception:
             return []
+
+    def get_correct_options(self) -> list[int]:
+        try:
+            data = json.loads(self.correct_options)
+            if isinstance(data, list):
+                return [int(x) for x in data]
+            if isinstance(data, int):
+                return [int(data)]
+        except Exception:
+            pass
+        return []
 
 
 class UserTaskAttempt(Base):

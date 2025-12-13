@@ -27,21 +27,27 @@ async def load_tasks_from_json(file_path: Union[str, Path] = TASKS_PATH):
             if existing:
                 continue
 
-            raw_correct = item.get("correctOption", 0)
-            if isinstance(raw_correct, int) and raw_correct > 0:
-                correct_index = raw_correct - 1
+            raw_correct = item.get("correctOption", [])
+
+            if isinstance(raw_correct, int):
+                correct_indices = [raw_correct - 1]
+
+            elif isinstance(raw_correct, list):
+                correct_indices = [i - 1 for i in raw_correct]
+
             else:
-                correct_index = int(raw_correct)
+                correct_indices = []
 
             task = Task(
                 id=task_id,
                 lesson_id=item["lessonId"],
                 name=item.get("name", "Вопрос"),
                 options=json.dumps(item.get("options", []), ensure_ascii=False),
-                correct_option=correct_index,
+                correct_options=json.dumps(correct_indices, ensure_ascii=False),
                 exp=item.get("exp", 0),
                 explanation=item.get("explanation", ""),
             )
+
             session.add(task)
 
         await session.commit()
