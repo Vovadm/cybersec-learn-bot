@@ -5,3 +5,4 @@
 pip_cache/
 .env
 .vscode
+.DS_Store

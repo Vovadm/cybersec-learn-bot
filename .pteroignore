@@ -3,3 +3,4 @@
 .cache/
 .local
 pip_cache/
+.DS_Store
