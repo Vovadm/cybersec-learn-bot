@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 from app.lessons import lessons
 
@@ -7,17 +7,17 @@ def start_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Изучать теорию")],
-            [KeyboardButton(text="Смотреть достижения")]
+            [KeyboardButton(text="Смотреть достижения")],
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
     )
 
 
 def lessons_keyboard() -> ReplyKeyboardMarkup:
-    buttons = []
+    buttons: list[list[KeyboardButton]] = []
 
     for i in range(0, len(lessons), 2):
-        row = []
+        row: list[KeyboardButton] = []
 
         row.append(KeyboardButton(text=lessons[i].name))
 
@@ -28,7 +28,4 @@ def lessons_keyboard() -> ReplyKeyboardMarkup:
 
     buttons.append([KeyboardButton(text="⬅ Вернуться в главное меню")])
 
-    return ReplyKeyboardMarkup(
-        keyboard=buttons,
-        resize_keyboard=True
-    )
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)

@@ -1,6 +1,7 @@
 import json
-from app.db.models import Lesson
+
 from app.db.db import async_session
+from app.db.models import Lesson
 
 
 async def load_lessons_from_json(file_path: str):

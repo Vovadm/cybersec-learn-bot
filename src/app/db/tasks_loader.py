@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from typing import Union
+from typing import cast, Union
 
-from app.db.models import Task
 from app.db.db import async_session
+from app.db.models import Task
 
 BASE_PATH = Path(__file__).parent
 TASKS_PATH = BASE_PATH / "data" / "tasks.json"
@@ -33,7 +33,8 @@ async def load_tasks_from_json(file_path: Union[str, Path] = TASKS_PATH):
                 correct_indices = [raw_correct - 1]
 
             elif isinstance(raw_correct, list):
-                correct_indices = [i - 1 for i in raw_correct]
+                ints = cast(list[int], raw_correct)
+                correct_indices = [i - 1 for i in ints]
 
             else:
                 correct_indices = []
@@ -42,8 +43,12 @@ async def load_tasks_from_json(file_path: Union[str, Path] = TASKS_PATH):
                 id=task_id,
                 lesson_id=item["lessonId"],
                 name=item.get("name", "Вопрос"),
-                options=json.dumps(item.get("options", []), ensure_ascii=False),
-                correct_options=json.dumps(correct_indices, ensure_ascii=False),
+                options=json.dumps(
+                    item.get("options", []), ensure_ascii=False
+                ),
+                correct_options=json.dumps(
+                    correct_indices, ensure_ascii=False
+                ),
                 exp=item.get("exp", 0),
                 explanation=item.get("explanation", ""),
             )

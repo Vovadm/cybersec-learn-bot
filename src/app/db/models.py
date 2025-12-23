@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, UniqueConstraint
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from app.db.db import Base
 import json
+from typing import Any, cast, List, Union
+
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.db import Base
 
 
 class User(Base):
@@ -46,7 +56,9 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    lesson_id: Mapped[int] = mapped_column(Integer, ForeignKey("lessons.id"), nullable=False)
+    lesson_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("lessons.id"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     options: Mapped[str] = mapped_column(Text, nullable=False)
     correct_options: Mapped[str] = mapped_column(Text, nullable=False)
@@ -62,15 +74,22 @@ class Task(Base):
         except Exception:
             return []
 
-    def get_correct_options(self) -> list[int]:
+    def get_correct_options(self) -> List[int]:
         try:
-            data = json.loads(self.correct_options)
-            if isinstance(data, list):
-                return [int(x) for x in data]
-            if isinstance(data, int):
-                return [int(data)]
-        except Exception:
-            pass
+            data: Any = json.loads(self.correct_options)
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+        if isinstance(data, list):
+            data_list = cast(List[Union[int, str]], data)
+            result: List[int] = []
+            for x in data_list:
+                result.append(int(x))
+            return result
+
+        if isinstance(data, (int, str)):
+            return [int(data)]
+
         return []
 
 

@@ -1,9 +1,11 @@
 from typing import Dict
-from app.db.db import async_session
-from app.db.models import Task, UserTaskAttempt, User
-from sqlalchemy.future import select
+
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.future import select
+
+from app.db.db import async_session
+from app.db.models import Task, User, UserTaskAttempt
 
 
 POLL_TASK_MAP: Dict[str, int] = {}
@@ -26,7 +28,9 @@ async def award_task_exp_if_needed(
         )
         user = result.scalars().first()
         if not user:
-            user = User(telegram_id=telegram_id, username=username, experience=0)
+            user = User(
+                telegram_id=telegram_id, username=username, experience=0
+            )
             session.add(user)
             await session.flush()
 
@@ -36,14 +40,17 @@ async def award_task_exp_if_needed(
 
         existing = await session.execute(
             select(UserTaskAttempt).where(
-                UserTaskAttempt.user_id == user.id, UserTaskAttempt.task_id == task_id
+                UserTaskAttempt.user_id == user.id,
+                UserTaskAttempt.task_id == task_id,
             )
         )
         if existing.scalars().first():
             return False
 
         try:
-            attempt = UserTaskAttempt(user_id=user.id, task_id=task_id, correct=1)
+            attempt = UserTaskAttempt(
+                user_id=user.id, task_id=task_id, correct=1
+            )
             session.add(attempt)
 
             await session.execute(

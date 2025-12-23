@@ -1,18 +1,19 @@
-from aiogram import F, Bot, Router
-from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, PollAnswer, InputPollOption, InputPollOptionUnion
-from sqlalchemy.future import select
-from typing import List, Sequence, Set
+from typing import Any, Sequence
 
+from aiogram import Bot, F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, PollAnswer
+from sqlalchemy.future import select
+
+from app.db.db import async_session
+from app.db.experience import give_exp
+from app.db.models import Task, User
 from app.keyboards import lessons_keyboard, start_keyboard
 from app.lessons import get_lesson
 from app.states import LearnStates
-from app.db.db import async_session
-from app.db.models import Task, User
-from app.db.experience import give_exp
 from app.tasks import (
-    POLL_TASK_MAP,
     award_task_exp_if_needed,
+    POLL_TASK_MAP,
     register_poll,
     unregister_poll,
 )
@@ -57,11 +58,13 @@ async def view_achievements(message: Message):
 async def back_to_menu(message: Message, state: FSMContext):
     await state.clear()
 
-    await message.answer("Вы вернулись в главное меню.", reply_markup=start_keyboard())
+    await message.answer(
+        "Вы вернулись в главное меню.", reply_markup=start_keyboard()
+    )
 
 
 @router.message(LearnStates.choosing_lesson)
-async def lesson_selected(message: Message, state: FSMContext):
+async def lesson_selected(message: Message):
     if message.text is None or message.from_user is None:
         return
 
@@ -70,7 +73,9 @@ async def lesson_selected(message: Message, state: FSMContext):
         await message.answer("Такого урока нет. Выберите из списка.")
         return
 
-    await message.answer(f"📘 *{lesson.name}*\n\n{lesson.data}", parse_mode="Markdown")
+    await message.answer(
+        f"📘 *{lesson.name}*\n\n{lesson.data}", parse_mode="Markdown"
+    )
 
     await give_exp(
         telegram_id=str(message.from_user.id),
@@ -79,7 +84,9 @@ async def lesson_selected(message: Message, state: FSMContext):
     )
 
     async with async_session() as session:
-        result = await session.execute(select(Task).where(Task.lesson_id == lesson.id))
+        result = await session.execute(
+            select(Task).where(Task.lesson_id == lesson.id)
+        )
         tasks = result.scalars().all()
 
         for task in tasks:
@@ -91,7 +98,7 @@ async def lesson_selected(message: Message, state: FSMContext):
             is_quiz = len(correct_indices) == 1
             correct_option_id = int(correct_indices[0]) if is_quiz else None
 
-            poll_kwargs = {
+            poll_kwargs: dict[str, Any] = {
                 "chat_id": message.chat.id,
                 "question": task.name or "Вопрос",
                 "options": list(options_seq),
@@ -154,7 +161,10 @@ async def handle_poll_answer(poll_answer: PollAnswer, bot: Bot):
         else:
             await bot.send_message(
                 chat_id=user.id,
-                text=f"✅ Правильно, но опыт за это задание уже был получен.\n\n{explanation}",
+                text=(
+                    f"✅ Правильно, но опыт за это задание уже был получен."
+                    f"\n\n{explanation}"
+                ),
             )
     else:
         await bot.send_message(

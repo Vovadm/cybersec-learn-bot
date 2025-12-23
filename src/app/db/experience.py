@@ -1,9 +1,9 @@
-from sqlalchemy.future import select
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.future import select
 
 from app.db.db import async_session
-from app.db.models import User, Lesson, UserLesson
+from app.db.models import Lesson, User, UserLesson
 
 
 async def give_exp(telegram_id: str, username: str | None, lesson_id: int):
@@ -15,7 +15,9 @@ async def give_exp(telegram_id: str, username: str | None, lesson_id: int):
             user = result.scalars().first()
 
             if not user:
-                user = User(telegram_id=telegram_id, username=username, experience=0)
+                user = User(
+                    telegram_id=telegram_id, username=username, experience=0
+                )
                 session.add(user)
 
                 await session.flush()
